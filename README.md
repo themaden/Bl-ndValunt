@@ -1,168 +1,195 @@
-# BlindVault – Privacy-Aware Risk Engine for Banks
+BlindVault – Privacy-Aware Risk Engine for Banks
+“We have solved money, programmability, and scale. Privacy is the last piece of the puzzle.” BlindVault provides banks and fintechs with the necessary signal to understand customer behavior, but without exposing the customer's data nakedly.
 
-> “Parayı, programlanabilirliği ve ölçeği çözdük. Gizlilik bulmacanın son parçası.”  
-> BlindVault, bankalara ve fintech’lere **müşteri davranışını anlamak için gerekli sinyali** veriyor,  
-> ama **müşterinin verisini çıplak şekilde açığa çıkarmadan**.
+🌍 Problem
+In today's banking world:
 
-## 🌍 Problem
+Regulation (AML / KYC / risk monitoring) is becoming increasingly strict.
 
-Bugünün bankacılık dünyasında:
+Customers have reached the point of saying, "analyze me, but don't strip me bare."
 
-- Regülasyon (AML / KYC / risk izleme) giderek sıkılaşıyor.
-- Müşteriler “*beni analiz edin ama çıplak hale getirmeyin*” noktasına geldi.
-- Bankaların elinde **yüklü miktarda işlem verisi** var ama:
-  - Analitik için her yere kopyalanıyor,
-  - Data privacy / güvenlik / KVKK / GDPR tarafında ciddi risk yaratıyor,
-  - “Onay verdim mi, nerede kullanılıyor?” sorusuna net cevap verilemiyor.
+Banks possess massive amounts of transaction data but:
 
-Sonuç:  
-**Risk ekipleri daha çok veriye ihtiyaç duyarken, gizlilik ekipleri daha az veri kullanılmasını istiyor.**
+It's copied everywhere for analytics.
 
-BlindVault bu çatışmayı çözmeyi hedefleyen küçük ama gerçek bir adım.
+It creates serious risks regarding data privacy / security / KVKK / GDPR.
 
----
+They cannot provide clear answers to the question, "Did I give consent, and where is it being used?"
 
-## 💡 Çözüm: BlindVault
+The Result: Risk teams need more data, while privacy teams want less data to be used.
 
-BlindVault, bankaların kendi altyapısına kurulabilen, şu özelliklere sahip bir demo / MVP’dir:
+BlindVault is a small but real step aiming to resolve this conflict.
 
-- **Bank Dashboard (`/bank`)**
-  - Tüm müşterilerin listesi
-  - Son risk skorları + risk bandı (LOW / MEDIUM / HIGH)
-  - Hangi müşterinin analitik izni (consent) verdiğini gösteren **Consent sütunu**
-  - Consent kapalıysa, bankacı o müşteri için yeni skor üretemez
-- **User Privacy Insights (`/user?customerId=1`)**
-  - Müşteri kendi tarafında:
-    - Kendi risk skorunu ve harcama özetini görebilir
-    - “Analytics izni”ni tek tıkla **Aç / Kapat** yapabilir
-  - İzni kapattığında:
-    - Skor ve istatistikler kullanıcı ekranında temizlenir
-    - Banka panelinde “Consent off” durumuna düşer (ve skor tekrar hesaplanamaz)
-- **Backend (Node + Express)**
-  - `customers`, `transactions`, `scores`, `consents` tablolarıyla çalışan basit ama gerçekçi bir veri modeli
-  - `transactions.raw_data` alanı **AES-256-GCM ile şifrelenmiş** durumda
-  - Risk motoru 90 günlük harcama davranışına göre skor üretir
+💡 Solution: BlindVault
+BlindVault is a demo / MVP that can be installed within a bank's own infrastructure, featuring the following:
 
-> Kısaca:  
-> **Bankacı için şeffaf risk ekranı**, **müşteri için şeffaf gizlilik ekranı**.
+Bank Dashboard (/bank)
 
----
+A list of all customers.
 
-## 🧱 Mimari
+Latest risk scores + risk band (LOW / MEDIUM / HIGH).
 
-**Teknik stack:**
+A Consent column showing which customers have given analytics permission.
 
-- Backend:
-  - Node.js + Express
-  - PostgreSQL
-  - `pg` ile bağlantı
-  - AES-256-GCM ile şifreleme (Node `crypto` modülü)
-- Frontend:
-  - Next.js (App Router)
-  - React
-  - Tailwind CSS
-- Altyapı:
-  - Docker Compose ile Postgres container
-  - `.env` ortam değişkenleri
+If consent is off, the bank officer cannot generate a new score for that customer.
 
-**Veri modeli (özet):**
+User Privacy Insights (/user?customerId=1)
 
-- `customers` – Müşteri temel bilgileri
-- `transactions` – Müşteriye ait işlem kayıtları
-  - `raw_data` alanı **şifreli JSON string**
-- `scores` – Her müşteri için üretilmiş risk skorları
-- `consents` – Her müşteri için **analytics izni** (on/off)
+The customer can, on their side:
 
----
+View their own risk score and spending summary.
 
-## 🔐 Gizlilik Modeli
+Toggle the "Analytics Permission" On / Off with a single click.
 
-Şu anda MVP’de üç katmanlı bir gizlilik yaklaşımı var:
+When they turn the permission off:
 
-1. **Şifreleme (Encryption-at-rest)**
-   - `transactions.raw_data` alanı AES-256-GCM ile şifrelenmiş durumda.
-   - DB’yi doğrudan açan biri merchant / channel / country gibi detayları **çıplak göremiyor**.
-   - Şifreleme anahtarı `ENCRYPTION_KEY` ile `.env` üzerinden yönetiliyor.
+The score and statistics are cleared on the user's screen.
 
-2. **Consent tablosu (`consents`)**
-   - Her müşteri için tek satır:
-     - `allow_analytics: boolean`
-   - Backend’te:
-     - `ensureAnalyticsAllowed(customerId)` ile kontrol ediliyor.
-     - Consent yoksa (veya false ise) risk skoru hesaplama endpoint’i 403 dönüyor.
+The status on the Bank panel switches to "Consent off" (and the score cannot be recalculated).
 
-3. **Privacy-aware API Response**
-   - `GET /customers/:id/summary` endpoint’i:
-     - Eğer `allow_analytics = false` ise:
-       - `score = null`, `band = null`
-       - `stats` alanı 0 / boş dönüyor
-   - Böylece:
-     - Data, backend içinde bile **“izin var” filtresinden geçmeden** full detaylı çıkmıyor.
+Backend (Node + Express)
 
----
+A simple but realistic data model working with customers, transactions, scores, and consents tables.
 
-## 🧪 Endpoint’ler
+The transactions.raw_data field is encrypted with AES-256-GCM.
 
-**Health:**
+The Risk Engine generates a score based on 90 days of spending behavior.
 
-- `GET /health`  
-  → `{ status: "ok", service: "blindvault-backend", timestamp: ... }`
+In short: A transparent risk screen for the bank officer, a transparent privacy screen for the customer.
 
-**Müşteri listesi:**
+🧱 Architecture
+Technical Stack:
 
-- `GET /customers`  
-  → Tüm müşteriler
+Backend:
 
-- `GET /customers/with-scores`  
-  → Müşteriler + son risk skoru + `allow_analytics`
+Node.js + Express
 
-**Consent:**
+PostgreSQL
 
-- `GET /customers/:id/consent`  
-  → `{ customerId, allowAnalytics }`
+Connection via pg
 
-- `PUT /customers/:id/consent`  
-  Body: `{ "allowAnalytics": true | false }`  
-  → Konsolide consent durumu
+AES-256-GCM encryption (Node crypto module)
 
-**Özet:**
+Frontend:
 
-- `GET /customers/:id/summary`  
-  Dönen yapı:
-  ```json
-  {
-    "customer": { ... },
-    "consent": { "allowAnalytics": true },
-    "score": 0.72,
-    "band": "MEDIUM",
-    "scoreCreatedAt": "2025-11-13T...",
-    "stats": {
-      "totalAmount90d": 12345.67,
-      "txCount90d": 24,
-      "avgAmount90d": 514.40,
-      "topCategories": [
-        { "category": "E-COMMERCE", "count": 10, "totalAmount": 5000.0 }
-      ]
-    }
+Next.js (App Router)
+
+React
+
+Tailwind CSS
+
+Infrastructure:
+
+Postgres container via Docker Compose
+
+.env environment variables
+
+Data Model (Summary):
+
+customers – Basic customer information.
+
+transactions – Customer transaction records.
+
+raw_data field is an encrypted JSON string.
+
+scores – Risk scores generated for each customer.
+
+consents – Analytics permission (on/off) for each customer.
+
+🔐 Privacy Model
+The current MVP employs a three-layered privacy approach:
+
+Encryption (Encryption-at-rest)
+
+The transactions.raw_data field is encrypted with AES-256-GCM.
+
+Anyone directly opening the DB cannot see details like merchant / channel / country in the clear.
+
+The encryption key is managed via the .env file using ENCRYPTION_KEY.
+
+Consent Table (consents)
+
+A single row per customer:
+
+allow_analytics: boolean
+
+In the Backend:
+
+Checked using ensureAnalyticsAllowed(customerId).
+
+If consent is missing (or false), the risk score calculation endpoint returns 403 Forbidden.
+
+Privacy-aware API Response
+
+The GET /customers/:id/summary endpoint:
+
+If allow_analytics = false:
+
+score = null, band = null
+
+The stats field returns 0 / empty.
+
+Thus:
+
+Data does not exit the backend with full details without passing the "consent check" filter.
+
+🧪 Endpoints
+Health:
+
+GET /health → { status: "ok", service: "blindvault-backend", timestamp: ... }
+
+Customer List:
+
+GET /customers → All customers
+
+GET /customers/with-scores → Customers + latest risk score + allow_analytics
+
+Consent:
+
+GET /customers/:id/consent → { customerId, allowAnalytics }
+
+PUT /customers/:id/consent Body: { "allowAnalytics": true | false } → Consolidated consent status
+
+Summary:
+
+GET /customers/:id/summary Returned structure:
+
+JSON
+
+{
+  "customer": { ... },
+  "consent": { "allowAnalytics": true },
+  "score": 0.72,
+  "band": "MEDIUM",
+  "scoreCreatedAt": "2025-11-13T...",
+  "stats": {
+    "totalAmount90d": 12345.67,
+    "txCount90d": 24,
+    "avgAmount90d": 514.40,
+    "topCategories": [
+      { "category": "E-COMMERCE", "count": 10, "totalAmount": 5000.0 }
+    ]
   }
-
+}
+🚀 Setup Steps
+Bash
 
 cd blindvault
 sudo docker compose up -d
-
+Bash
 
 cd backend
-cp .env.example .env   # yoksa
-# .env dosyasına DATABASE_URL ve ENCRYPTION_KEY ekle
+cp .env.example .env    # if it doesn't exist
+# Add DATABASE_URL and ENCRYPTION_KEY to the .env file
 
 npm install
-npm run seed   # örnek müşteri + işlem verisi basar
-npm run dev    # backend 4000 portunda açılır
-
+npm run seed    # inserts sample customer + transaction data
+npm run dev     # backend starts on port 4000
+Bash
 
 cd frontend
-cp .env.example .env   # yoksa
-# NEXT_PUBLIC_BACKEND_URL ayarla (genelde http://localhost:4000)
+cp .env.example .env    # if it doesn't exist
+# Set NEXT_PUBLIC_BACKEND_URL (usually http://localhost:4000)
 
 npm install
-npm run dev    # frontend 3000 portunda açılır
+npm run dev     # frontend starts on port 3000
